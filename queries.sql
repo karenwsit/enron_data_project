@@ -1,112 +1,91 @@
-#Question 1:How many emails did each person receive each day?
+/*
+Question 1: How many emails did each person receive each day?
+Comments: Solution does not display people who received 0 emails. To do so, a calendar table needs to be created & joined to.
+*/
 
-SELECT COUNT(*), recipient, strftime('%m-%d-%Y', date)
+SELECT strftime('%m-%d-%Y', date), recipient, COUNT(*)
 FROM email_recipients
-JOIN emails ON email_fk = email_id
+    JOIN emails ON email_fk = email_id
 GROUP BY recipient, strftime('%m-%d-%Y', date)
 ORDER BY date;
 
-#Question 2a:Let's label an email as "direct" if there is exactly one recipient and "broadcast" if it has multiple recipients.Identify the person (or people) who received the largest number of direct emails
+/*
+Question 2A: Identify the person (or people) who received the largest number of direct emails
+Comments: 2 Solutions have been provided. The first query uses the num_recipients column in email_recipients table which denormalizes the database but makes a cleaner & simpler query. The second query does not use the num_recipients column which maintains normalization but results in a more complicated query.
+*/
 
-# SELECT MAX(num_direct_emails), recipient
-# FROM (
-# SELECT COUNT(num_recipients) as num_direct_emails , recipient
-# FROM email_recipients
-# WHERE num_recipients=1
-# GROUP BY recipient
-# )
+-- Solution 1 using num_recipients column
 
-#Inner Select: Give me a email id, # of distinct recipients  AS T1
-#Outer Select: Go into recipient table & match email_id to email_id in Inner Query & give me recipient & num of dir_emails
-
-# SELECT recipient, COUNT(*)
-# FROM email_recipients, (
-#     SELECT email_fk, COUNT(*) as num_dir_emails
-#     FROM email_recipients
-#     GROUP BY email_fk ) as t1
-# WHERE email_recipients.email_fk = t1.email_fk AND t1.num_dir_emails = 1
-# GROUP BY recipient
-# ORDER BY COUNT(*) DESC;
-
-#Question 2b: Identify the person (or people) who sent the largest number of broadcast emails.
-
-SELECT s.sender, COUNT(r.num_recipients) FROM email_senders s, email_recipients r, emails  WHERE s.email_fk = emails.email_id and r.email_fk = emails.email_ID AND s.sender = "steven.kean@enron.com" AND r.num_recipients > 1 GROUP BY s.sender, r.email_fk;
-
-SELECT s.sender, r.email_fk, COUNT(r.num_recipients) FROM email_senders s, email_recipients r, emails  WHERE s.email_fk = emails.email_id and r.email_fk = emails.email_ID GROUP BY r.email_fk, s.sender HAVING COUNT(r.num_recipients) > 1 ORDER BY r.email_fk DESC;
-
-SELECT email_senders.sender, COUNT(email_senders.sender)
-FROM email_senders
-WHERE email_senders.sender IN (SELECT s.sender FROM email_senders s, email_recipients r, emails  WHERE s.email_fk = emails.email_id and r.email_fk = emails.email_ID GROUP BY r.email_fk HAVING COUNT(r.num_recipients) > 1)
-GROUP BY email_senders.sender
-ORDER BY COUNT(email_senders.sender) ASC;
-
-
-#New Query:
-SELECT t2.emailsender, MAX(t2.emailssentout)
-FROM (SELECT email_senders.sender as emailsender, COUNT(*) as emailssentout 
-FROM email_senders, (SELECT s.sender, r.email_fk, COUNT(r.num_recipients) FROM email_senders s, email_recipients r, emails  WHERE s.email_fk = emails.email_id and r.email_fk = emails.email_ID GROUP BY s.sender, r.email_fk HAVING COUNT(r.num_recipients) > 1) as t1
-WHERE email_senders.email_fk = t1.email_fk 
-GROUP BY email_senders.sender) as t2;
-
-# showing us the sender, the email ID, and the number of recipients that email has filtered only to show unique email IDs
-SELECT s.sender, r.email_fk, COUNT(r.num_recipients) FROM email_senders s, email_recipients r, emails  WHERE s.email_fk = emails.email_id and r.email_fk = emails.email_ID GROUP BY s.sender, r.email_fk HAVING COUNT(r.num_recipients) > 1 ORDER BY COUNT(r.num_recipients) ASC
-
-# WRONG: Counting the # of recipients per email instead of the number of emails
-
-# SELECT MAX(num_b_emails), sender
-# FROM(
-# SELECT COUNT(*) as num_b_emails , sender
-# FROM email_senders as es
-# JOIN email_recipients as er ON es.email_fk = er.email_fk
-# WHERE num_recipients > 1
-# GROUP BY sender
-# );
-
-SELECT email_senders.email_fk, email_recipients.email_fk, COUNT(*) as num_dir_emails, num_recipients 
-    FROM email_recipients, email_senders
-    WHERE email_senders.email_fk = email_recipients.email_fk
-    GROUP BY email_senders.email_fk, email_recipients.email_fk
-
-SELECT sender, COUNT(*)
-FROM email_senders, (
-    SELECT email_fk, COUNT(*) as num_b_emails
+SELECT recipient, MAX(num_direct_emails)
+FROM (
+    SELECT COUNT(num_recipients) AS num_direct_emails , recipient
     FROM email_recipients
-    GROUP BY email_fk ) as t1
-WHERE email_senders.email_fk = t1.email_fk AND t1.num_b_emails > 1
-GROUP BY sender
-ORDER BY COUNT(*) ASC;
+    WHERE num_recipients=1
+    GROUP BY recipient
+);
 
-##################################################################################
+-- Solution 2 without using num_recipients column in email_recipients table
 
-#Question 3: Find the five emails with the fastest response times. (A response is defined as
-# 1)a message from one of the recipients to the original sender
-# 2)whose subject line contains all of the words from the subject of the original email
-# 3)the response time should be measured as the difference between when the original email was sent and when the response was sent
+SELECT recipient, MAX(num_dir_emails)
+FROM (
+    SELECT recipient, COUNT(*) AS num_dir_emails
+    FROM email_recipients, (
+        SELECT email_fk, COUNT(*) AS num_dir_emails
+        FROM email_recipients
+        GROUP BY email_fk ) AS t1
+    WHERE email_recipients.email_fk = t1.email_fk AND t1.num_dir_emails = 1
+    GROUP BY recipient
+);
 
-WITH email as (
-SELECT 
-e.subject_line
-,e.date
-,es.sender
-,er.recipient
-,e.email_id
-from emails e
-inner join email_senders es on e.email_id = es.email_fk
-inner join email_recipients er on e.email_id = er.email_fk
- )
+/*
+Question 2B: Identify the person (or people) who sent the largest number of broadcast emails.
+Comments: 2 Solutions have been provided again. The first query uses the num_recipients column in email_recipients table which denormalizes the database AND results in a more complicated query.The second query does not use the num_recipients column which maintains normalization AND results in a simpler and cleaner query.
+*/
 
-Select o.subject_line
-,o.date as date_receive
-,r.date AS date_response
-,(strftime('%s' ,r.date) - strftime('%s' ,o.date))/60 AS response_time
-,o.sender
-,o.recipient
-,o.email_id
-,r.email_id
-FROM email o
-INNER JOIN email r ON ((o.subject_line != "" AND r.subject_line LIKE '%'||o.subject_line||'%') OR (o.subject_line = "" AND r.subject_LINE = "re:"))
-and o.recipient = r.sender # original recipient now becomes the new sender on the response email
-and o.sender = r.recipient # original sender now becomes the new recipient of the response email
-and o.date < r.date
+-- Solution 1 using num_recipients table
+
+SELECT t2.emailsender, MAX(t2.emails_sent)
+FROM (
+    SELECT email_senders.sender AS emailsender, COUNT(*) AS emails_sent
+    FROM email_senders, (
+        SELECT s.sender, r.email_fk, COUNT(r.num_recipients) 
+        FROM email_senders s, email_recipients r, emails 
+        WHERE s.email_fk = emails.email_id AND r.email_fk = emails.email_ID
+        GROUP BY s.sender, r.email_fk HAVING COUNT(r.num_recipients) > 1) AS t1
+    WHERE email_senders.email_fk = t1.email_fk
+    GROUP BY email_senders.sender
+) AS t2;
+
+
+-- Solution 2 without using num_recipients column
+
+SELECT sender, MAX(emails_sent)
+FROM(
+    SELECT sender, COUNT(*) AS emails_sent
+    FROM email_senders, (
+        SELECT email_fk, COUNT(*) AS num_b_emails
+        FROM email_recipients
+        GROUP BY email_fk ) AS t1
+    WHERE email_senders.email_fk = t1.email_fk AND t1.num_b_emails > 1
+    GROUP BY sender
+);
+
+/*
+Question 3: Find the five emails with the fastest response times. (A response is defined as a message from one of the recipients to the original sender whose subject line contains all of the words from the subject of the original email the response time should be measured as the difference between when the original email was sent and when the response was sent)
+Comments: Used a common table expression to make it more organized & easier to read & understand
+*/
+
+WITH email AS (
+SELECT e.subject_line, e.date, es.sender, er.recipient, e.email_id
+FROM emails AS e
+    INNER JOIN email_senders AS es on e.email_id = es.email_fk
+    INNER JOIN email_recipients AS er on e.email_id = er.email_fk
+)
+SELECT o.email_id, r.email_id, o.date AS date_received, r.date AS date_response,(strftime('%s', r.date) - strftime('%s',o.date))/60 AS response_time, o.sender, o.recipient, r.subject_line
+FROM email AS o
+    INNER JOIN email AS r ON ((o.subject_line != "" AND r.subject_line LIKE '%'||o.subject_line||'%') OR (o.subject_line = "" AND r.subject_LINE = "re:"))
+    AND o.recipient = r.sender  -- original recipient now becomes the new sender on the response email
+    AND o.sender = r.recipient  -- original sender now becomes the new recipient of the response email
+    AND o.date < r.date
 ORDER BY (strftime('%s',r.date) - strftime('%s', o.date))/60 ASC
 LIMIT 5;
