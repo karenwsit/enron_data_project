@@ -1,5 +1,4 @@
 import email
-from email.parser import HeaderParser
 import os
 from dateutil.parser import parse
 import seed
@@ -27,9 +26,9 @@ def get_email_headers(filepath_list):
     for filepath in filepath_list:
         with open(filepath, 'r') as f:
             msg = email.message_from_file(f)  # Returns a message object structure tree from an open file object
-
-        parser = HeaderParser()
-        headers = parser.parsestr(msg.as_string())  # msg.as_string returns the entire message flattened as a string & parses the headers; returns an instance object
+            
+        # parser = HeaderParser()
+        # headers = parser.parsestr(msg.as_string())  # msg.as_string returns the entire message flattened as a string & parses the headers; returns an instance object
 
         # yield msg
 
@@ -53,52 +52,46 @@ def get_email_headers(filepath_list):
 
 def get_sender_set(from_str):
     if from_str:
-        try:
-            from_list = from_str.split(',')
-        except AttributeError:
-            raise
+        from_list = from_str.split(',')
+
+    # Assumption: even if sender appears multiple times in the 'from' field, recipient will only receive 1 email
+    # remove duplicates
     sender_set = set(from_list)
 
-    # remove leading & trailing space
+    # remove leading & trailing space on email
     sender_set = [sender.strip() for sender in sender_set]
     return sender_set
 
 def get_recipient_set(to_str, cc_str, bcc_str):
     recipient_list = []
     if to_str:
-        try:
-            to_list = to_str.split(',')
-            recipient_list.extend(to_list)
-        except:
-            pass
+        to_list = to_str.split(',')
+        recipient_list.extend(to_list)
     if cc_str:
-        try:
-            cc_list = cc_str.split(',')
-            recipient_list.extend(cc_list)
-        except:
-            pass
+        cc_list = cc_str.split(',')
+        recipient_list.extend(cc_list)
     if bcc_str:
-        try:
-            bcc_list = bcc_str.split(',')
-            recipient_list.extend(bcc_list)
-        except:
-            pass
+        bcc_list = bcc_str.split(',')
+        recipient_list.extend(bcc_list)
 
+    # Assumption: Even if recipient appears in more than 1 field (to/cc/bcc) or multiple times in the same field, recipient will only receive 1 email
     # remove duplicates
     recipient_set = set(recipient_list)
 
-    # remove leading & trailing space
+    # remove leading & trailing space on email
     recipient_set = [recipient.strip() for recipient in recipient_set]
 
     return recipient_set
 
 def get_datetime(date_str):
     time_obj = parse(date_str)
-    #want naive instead of aware because many libs & database adapters have no idea about timezones
+
+    #return naive time object instead of aware time object because many libs & database adapters have no idea about timezones
     naive_time_obj = time_obj.replace(tzinfo=None)
     return naive_time_obj
 
 def clean_subject_line(subject_line):
+    #Assumption: Emails with blank subject lines be kept as blank instead of being marked NULL since they still have valid information and/or content and this happens frequently (66 blank subject line emails in the dataset)
     return subject_line.lower().strip()
 
 def main():
