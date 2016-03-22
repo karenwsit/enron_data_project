@@ -4,9 +4,9 @@ import os
 from dateutil.parser import parse
 import seed
 
-def create_list_of_filepaths():
+def create_list_of_filepaths(data_file_loc):
     """Returns a list of filepaths for files ending with .txt"""
-    
+
     filepath_list = []
 
     for root, dirs, files in os.walk("./enron_with_categories"):
@@ -15,7 +15,12 @@ def create_list_of_filepaths():
                 filepath_list.append(os.path.join(root, f))
     return filepath_list
 
-#This function is doing too much. Parsing through files, getting email headers, seeding. How do I best separate it out the seeding into the seed file?
+
+    # for root, dirs, files in os.walk(data_file_loc):
+    #     for f in files:
+    #         if f.endswith('.txt'):
+    #             yield (os.path.join(root, f))
+
 def get_email_headers(filepath_list):
     """Decode header_text for each file"""
 
@@ -26,13 +31,16 @@ def get_email_headers(filepath_list):
         parser = HeaderParser()
         headers = parser.parsestr(msg.as_string())  # msg.as_string returns the entire message flattened as a string & parses the headers; returns an instance object
 
-        msg_id = headers['Message-ID']
-        date_str = headers['Date']
-        from_str = headers['From']
-        to_str = headers['To']
-        cc_str = headers['Cc']
-        bcc_str = headers['Bcc']
-        subject_line = headers['Subject']
+        # yield msg
+
+# done
+        msg_id = msg['Message-ID']
+        date_str = msg['Date']
+        from_str = msg['From']
+        to_str = msg['To']
+        cc_str = msg['Cc']
+        bcc_str = msg['Bcc']
+        subject_line = msg['Subject']
 
         #normalize data
         msg_id = msg_id.strip()
@@ -86,6 +94,7 @@ def get_recipient_set(to_str, cc_str, bcc_str):
 
 def get_datetime(date_str):
     time_obj = parse(date_str)
+    #want naive instead of aware because many libs & database adapters have no idea about timezones
     naive_time_obj = time_obj.replace(tzinfo=None)
     return naive_time_obj
 
@@ -93,7 +102,7 @@ def clean_subject_line(subject_line):
     return subject_line.lower().strip()
 
 def main():
-    filepath_list = create_list_of_filepaths()
+    filepath_list = create_list_of_filepaths("./enron_with_categories")
     get_email_headers(filepath_list)
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, ForeignKey, DateTime
 from sqlalchemy.interfaces import PoolListener
 
-#ORM - refactor to figure out how to do it in SQLAlchemy Core
+#Enforces foreign key constraints
 class ForeignKeysListener(PoolListener):
     def connect(self, dbapi_con, con_record):
         db_cursor = dbapi_con.execute('pragma foreign_keys=ON')
@@ -14,7 +14,7 @@ emails = Table('emails', metadata,
     Column('email_id', Integer, autoincrement=True, primary_key=True),  # synthetic pk
     Column('msg_id', String, nullable=False),
     Column('date', DateTime, nullable=False),
-    Column('subject_line', String),
+    Column('subject_line', String, nullable=False),
     )
 
 email_recipients = Table('email_recipients', metadata,

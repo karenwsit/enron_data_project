@@ -1,15 +1,7 @@
-# from sqlalchemy.engine import Engine
-# from sqlalchemy import event
 from model import emails, email_recipients, email_senders, engine
 
 engine.execute('pragma foreign_keys=on')
 conn = engine.connect()
-
-# @event.listens_for(engine, "connect")
-# def set_sqlite_pragma(dbapi_connection, connection_record):
-#     cursor = dbapi_connection.cursor()
-#     cursor.execute("PRAGMA foreign_keys=ON")
-#     cursor.close()
 
 def load_database(msg_id, datetime, recipient_set, sender_set, subject_line):
 
