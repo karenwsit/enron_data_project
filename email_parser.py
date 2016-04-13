@@ -36,6 +36,7 @@ def normalize_and_seed_data(msg):
     sender_set = get_sender_set(from_str)
     subject_clean = clean_subject_line(subject_line)
 
+    #Seed data
     seed.load_database(msg_id, datetime_obj, recipient_set, sender_set, subject_clean)
 
 def get_sender_set(from_str):
